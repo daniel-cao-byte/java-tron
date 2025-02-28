@@ -10,6 +10,8 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
 import org.springframework.util.StringUtils;
+import org.tron.common.prometheus.MetricKeys;
+import org.tron.common.prometheus.Metrics;
 import org.tron.core.vm.config.VMConfig;
 import org.tron.core.vm.program.Program;
 import org.tron.core.vm.program.Program.JVMStackOverFlowException;
@@ -38,7 +40,6 @@ public class VM {
         }
 
         try {
-          long begin = System.nanoTime();
           Operation op = jumpTable.get(program.getCurrentOpIntValue());
           if (!op.isEnabled()) {
             throw Program.Exception.invalidOpCode(program.getCurrentOp());
@@ -89,12 +90,12 @@ public class VM {
           /* check if cpu time out */
           program.checkCPUTimeLimit(opName);
 
+          long start = System.nanoTime();
           /* exec op action */
           op.execute(program);
-
-          program.setPreviouslyExecutedOp((byte) op.getOpcode());
           long end = System.nanoTime();
-          long cost = end - begin;
+          long cost = end - start;
+          Metrics.histogramObserve(MetricKeys.Histogram.VM_OPCODE_LATENCY, cost / 1E6, opName);
           if (!opTimeRecords.containsKey(opName)) {
             Map<String, Long> metrics= new HashMap<>();
             metrics.put("time", cost);
@@ -110,6 +111,7 @@ public class VM {
             metrics.put("minTime", metrics.get("minTime") < cost ? metrics.get("minTime") : cost);
           }
 
+          program.setPreviouslyExecutedOp((byte) op.getOpcode());
         } catch (RuntimeException e) {
           logger.info("VM halted: [{}]", e.getMessage());
           if (!(e instanceof TransferException)) {
