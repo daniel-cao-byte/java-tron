@@ -2,10 +2,10 @@ package org.tron.core.vm;
 
 import static org.tron.core.Constant.DYNAMIC_ENERGY_FACTOR_DECIMAL;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 
-import java.io.FileOutputStream;
-import java.io.ObjectOutputStream;
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +26,8 @@ public class VM {
   private static final Set<Integer> CALL_OPS = ImmutableSet.of(Op.CALL, Op.STATICCALL,
       Op.DELEGATECALL, Op.CALLCODE, Op.CALLTOKEN);
   public static Map<String, Map<String, Long>> opTimeRecords = new HashMap<>();
+
+  private static ObjectMapper mapper = new ObjectMapper();
 
   public static void play(Program program, JumpTable jumpTable) {
     try {
@@ -148,10 +150,8 @@ public class VM {
   }
 
   public static void dumpRecordsToFileAndClear(String fileName) {
-    try (FileOutputStream fos = new FileOutputStream(fileName)) {
-      ObjectOutputStream oos = new ObjectOutputStream(fos);
-
-      oos.writeObject(opTimeRecords);
+    try {
+      mapper.writeValue(new File(fileName), opTimeRecords);
       opTimeRecords.clear();
     } catch (Exception e) {
       logger.warn("dump VM opcode records to file failed ", e);

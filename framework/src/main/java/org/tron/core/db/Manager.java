@@ -1066,7 +1066,7 @@ public class Manager {
       TooBigTransactionResultException, ZksnarkException, BadBlockException, EventBloomException {
     processBlock(block, txs);
     if (block.getNum() % 10_000L == 0) {
-      VM.dumpRecordsToFileAndClear("opMetrics/" + block.getNum() + "-metrics.dat");
+      VM.dumpRecordsToFileAndClear("op-metrics/" + block.getNum() + "-ops.json");
     }
 
     chainBaseManager.getBlockStore().put(block.getBlockId().getBytes(), block);
