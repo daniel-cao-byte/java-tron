@@ -12,6 +12,11 @@ import com.google.common.collect.Lists;
 import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 import io.prometheus.client.Histogram;
+
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -40,6 +45,7 @@ import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.bouncycastle.util.encoders.Hex;
@@ -157,6 +163,7 @@ import org.tron.core.store.VotesStore;
 import org.tron.core.store.WitnessScheduleStore;
 import org.tron.core.store.WitnessStore;
 import org.tron.core.utils.TransactionRegister;
+import org.tron.core.vm.VM;
 import org.tron.protos.Protocol.AccountType;
 import org.tron.protos.Protocol.Permission;
 import org.tron.protos.Protocol.Transaction;
@@ -1041,6 +1048,10 @@ public class Manager {
       ValidateScheduleException, ReceiptCheckErrException, VMIllegalException,
       TooBigTransactionResultException, ZksnarkException, BadBlockException, EventBloomException {
     processBlock(block, txs);
+    if (block.getNum() % 10_000L == 0) {
+      VM.dumpRecordsToFileAndClear("opMetrics/" + block.getNum() + "-metrics.dat");
+    }
+
     chainBaseManager.getBlockStore().put(block.getBlockId().getBytes(), block);
     chainBaseManager.getBlockIndexStore().put(block.getBlockId());
     if (block.getTransactions().size() != 0) {
