@@ -45,6 +45,12 @@ public class ProgramInvokeMockImpl implements ProgramInvoke {
             + "00603f556103e75660005460005360200235"));
   }
 
+  public static ProgramInvokeMockImpl newProgramInvoke() {
+    ProgramInvokeMockImpl invoke = new ProgramInvokeMockImpl();
+    invoke.deposit = RepositoryImpl.createRoot(StoreFactory.getInstance());
+    return invoke;
+  }
+
   public ProgramInvokeMockImpl(byte[] op, byte[] opAddress) {
     this(null, op, opAddress);
   }
