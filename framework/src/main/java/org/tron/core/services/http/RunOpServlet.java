@@ -115,7 +115,6 @@ public class RunOpServlet extends RateLimiterServlet {
     }
 
     private void testSingleOpration(Program program) {
-        logger.info("run op : balance");
         Operation op = jumpTable.get(program.getCurrentOpIntValue());
         if (!op.isEnabled()) {
             throw Program.Exception.invalidOpCode(program.getCurrentOp());
@@ -128,6 +127,5 @@ public class RunOpServlet extends RateLimiterServlet {
         long end = System.nanoTime();
         cost += (end - start);
         program.setPreviouslyExecutedOp((byte) op.getOpcode());
-
     }
 }
