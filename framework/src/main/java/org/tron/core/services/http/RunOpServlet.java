@@ -10,6 +10,7 @@ import org.springframework.util.StringUtils;
 import org.tron.common.runtime.InternalTransaction;
 import org.tron.common.runtime.vm.DataWord;
 import org.tron.core.exception.ContractValidateException;
+import org.tron.core.store.StoreFactory;
 import org.tron.core.vm.JumpTable;
 import org.tron.core.vm.Operation;
 import org.tron.core.vm.OperationRegistry;
@@ -76,7 +77,7 @@ public class RunOpServlet extends RateLimiterServlet {
 
     private void runOp(byte[] bytecodes, byte[] codeAddress, List<String> stackValues) throws ContractValidateException {
         for (int i = 0; i < round; i++) {
-            ProgramInvokeMockImpl invoke = ProgramInvokeMockImpl.newProgramInvoke();
+            ProgramInvokeMockImpl invoke = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             Protocol.Transaction trx = Protocol.Transaction.getDefaultInstance();
             InternalTransaction interTrx =
                     new InternalTransaction(trx, InternalTransaction.TrxType.TRX_UNKNOWN_TYPE);
