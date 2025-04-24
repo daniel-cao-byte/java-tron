@@ -5,8 +5,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bouncycastle.util.encoders.Hex;
+import org.eclipse.jetty.util.StringUtil;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.tron.common.runtime.InternalTransaction;
 import org.tron.common.runtime.vm.DataWord;
 import org.tron.core.exception.ContractValidateException;
@@ -40,7 +40,11 @@ public class RunOpServlet extends RateLimiterServlet {
 
     @SneakyThrows
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        File file=new File("op.json");
+        String opConfig = request.getParameter("op_config");
+        if (StringUtil.isBlank(opConfig)) {
+            opConfig = "op";
+        }
+        File file=new File(opConfig + ".json");
         String content= FileUtils.readFileToString(file,"UTF-8");
         JSONObject params = JSONObject.parseObject(content);
         round = params.getIntValue("round");
@@ -48,7 +52,7 @@ public class RunOpServlet extends RateLimiterServlet {
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");//设置日期格式
         String date = df.format(new Date());
         mkdir();
-        String fileName = "benchmark/output_" + date + "_" + round + ".txt";
+        String fileName = "benchmark/output_" + date + "_" + opConfig + "_" + round + ".txt";
         FileWriter fileWriter = new FileWriter(fileName);
         fileWriter.write(String.format("round:%d\n", round));
         for (Map.Entry<String, Object> entry : ops.entrySet()) {
