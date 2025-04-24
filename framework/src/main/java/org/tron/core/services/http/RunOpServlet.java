@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.bouncycastle.util.encoders.Hex;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.tron.common.runtime.InternalTransaction;
@@ -55,9 +56,10 @@ public class RunOpServlet extends RateLimiterServlet {
             Object value = entry.getValue();
             Map<String, Object> map = (Map)value;
             byte[] bytecodes = getBytecodes(map);
+            byte[] codeAddress = getCodeAddress(map);
             List<String> stacks = getStacks(map);
             cost = 0;
-            runOp(bytecodes, stacks);
+            runOp(bytecodes, codeAddress, stacks);
             long avgCost = cost / round;
             logger.info("run op : " + opName + " cost: " + avgCost);
             fileWriter.write(String.format("%s\t%d\n", opName, avgCost));
@@ -72,13 +74,13 @@ public class RunOpServlet extends RateLimiterServlet {
         }
     }
 
-    private void runOp(byte[] bytecodes, List<String> stackValues) throws ContractValidateException {
+    private void runOp(byte[] bytecodes, byte[] codeAddress, List<String> stackValues) throws ContractValidateException {
         for (int i = 0; i < round; i++) {
             ProgramInvokeMockImpl invoke = ProgramInvokeMockImpl.newProgramInvoke();
             Protocol.Transaction trx = Protocol.Transaction.getDefaultInstance();
             InternalTransaction interTrx =
                     new InternalTransaction(trx, InternalTransaction.TrxType.TRX_UNKNOWN_TYPE);
-            Program program = new Program(bytecodes, bytecodes, invoke, interTrx);
+            Program program = new Program(bytecodes, codeAddress, invoke, interTrx);
             for (String value : stackValues) {
                 if (value.equals("randomAddress")) {
                     program.stackPush(new DataWord(generateAddress()));
@@ -99,12 +101,16 @@ public class RunOpServlet extends RateLimiterServlet {
     }
 
     private byte[] getBytecodes(Map<String, Object> map) {
-        List<String> bytecodes  =  (List)map.get("bytecodes");
-        byte[] result = new byte[bytecodes.size()];
-        for (int i = 0; i < bytecodes.size(); i++) {
-            result[i] = Byte.valueOf(bytecodes.get(i), 16);
+        String bytecodes = (String) map.get("bytecodes");
+        return Hex.decode(bytecodes);
+    }
+
+    private byte[] getCodeAddress(Map<String, Object> map) {
+        String codeAddress = (String) map.get("codeAddress");
+        if (codeAddress == null) {
+            return new byte[0];
         }
-        return result;
+        return Hex.decode(codeAddress);
     }
 
     private List<String> getStacks(Map<String, Object> map) {
