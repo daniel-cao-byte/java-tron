@@ -39,6 +39,7 @@ public class RunOpServlet extends RateLimiterServlet {
 
     @SneakyThrows
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        logger.info("run op begin ");
         File file=new File("op.json");
         String content= FileUtils.readFileToString(file,"UTF-8");
         JSONObject params = JSONObject.parseObject(content);
