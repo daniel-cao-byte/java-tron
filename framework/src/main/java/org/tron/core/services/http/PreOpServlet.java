@@ -2,62 +2,57 @@ package org.tron.core.services.http;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.util.encoders.Hex;
 import org.springframework.stereotype.Component;
-import org.tron.common.runtime.InternalTransaction;
-import org.tron.common.runtime.vm.DataWord;
-import org.tron.core.exception.ContractValidateException;
-import org.tron.core.store.StoreFactory;
-import org.tron.core.vm.JumpTable;
-import org.tron.core.vm.Operation;
-import org.tron.core.vm.OperationRegistry;
-import org.tron.core.vm.program.Program;
-import org.tron.core.vm.program.invoke.ProgramInvokeMockImpl;
-import org.tron.protos.Protocol;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j(topic = "API")
-public class RunOpServlet extends OpServlet {
+public class PreOpServlet extends OpServlet {
+
+    private long lastCost = Long.MAX_VALUE;
 
     @SneakyThrows
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        logger.info("run op begin ");
+        logger.info("pre op begin ");
         parseConfig(request);
 
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");//设置日期格式
         String date = df.format(new Date());
-        fileWriter.write(date + " run ops configFile: " + opConfig + "\n");
+        fileWriter.write(date + " pre ops configFile" + opConfig + "\n");
         fileWriter.write(String.format("round:%d\n", round));
         try {
             for (Map.Entry<String, Object> entry : ops.entrySet()) {
                 String opName = entry.getKey();
-                logger.info("run op : " + opName);
+                logger.info("pre op : " + opName);
                 Object value = entry.getValue();
                 Map<String, Object> map = (Map) value;
                 byte[] bytecodes = getBytecodes(map);
                 byte[] codeAddress = getCodeAddress(map);
                 List<String> stacks = getStacks(map);
-                cost = 0;
-                costList = new ArrayList<>();
-                runOp(bytecodes, codeAddress, stacks);
-                long avgCost = cost / round;
-
-                logger.info("run op : " + opName + " cost: " + avgCost);
-                fileWriter.write(String.format("%s\t%d\n", opName, avgCost));
+                while (true) {
+                    cost = 0;
+                    runOp(bytecodes, codeAddress, stacks);
+                    long avgCost = cost / round;
+                    fileWriter.write(String.format("%s\t%d\n", opName, avgCost));
+                    if (lastCost < cost) {
+                        break;
+                    }
+                    lastCost = cost;
+                }
+                fileWriter.write("\n");
             }
-            fileWriter.write("\n");
         }
         finally {
             fileWriter.close();
             ops = null;
-            costList = null;
+            lastCost = Long.MAX_VALUE;
         }
     }
-
 }

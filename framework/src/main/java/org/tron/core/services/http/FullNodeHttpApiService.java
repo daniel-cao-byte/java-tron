@@ -297,6 +297,8 @@ public class FullNodeHttpApiService extends HttpService {
   private GetOpTimeServlet getOpTimeServlet;
   @Autowired
   private RunOpServlet runOpServlet;
+  @Autowired
+  private PreOpServlet preOpServlet;
 
   @Override
   public void init() {
@@ -315,6 +317,7 @@ public class FullNodeHttpApiService extends HttpService {
       context.setContextPath("/");
       apiServer.setHandler(context);
 
+      context.addServlet(new ServletHolder(preOpServlet), "/wallet/preOp");
       context.addServlet(new ServletHolder(runOpServlet), "/wallet/runOp");
       context.addServlet(new ServletHolder(getOpTimeServlet), "/wallet/getoptime");
       context.addServlet(new ServletHolder(getAccountServlet), "/wallet/getaccount");
