@@ -12,7 +12,11 @@ import org.tron.core.vm.JumpTable;
 import org.tron.core.vm.Operation;
 import org.tron.core.vm.OperationRegistry;
 import org.tron.core.vm.program.Program;
+import org.tron.core.vm.program.invoke.ProgramInvoke;
+import org.tron.core.vm.program.invoke.ProgramInvokeFactory;
 import org.tron.core.vm.program.invoke.ProgramInvokeMockImpl;
+import org.tron.core.vm.repository.Repository;
+import org.tron.core.vm.repository.RepositoryImpl;
 import org.tron.protos.Protocol;
 
 import javax.servlet.http.HttpServletRequest;
@@ -103,10 +107,23 @@ public abstract class OpServlet extends RateLimiterServlet{
         maxCost = Long.MIN_VALUE;
         minCost = Long.MAX_VALUE;
         for (int i = 0; i < round; i++) {
-            ProgramInvokeMockImpl invoke = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
+            ProgramInvokeMockImpl invoke0 = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             Protocol.Transaction trx = Protocol.Transaction.getDefaultInstance();
             InternalTransaction interTrx =
                     new InternalTransaction(trx, InternalTransaction.TrxType.TRX_UNKNOWN_TYPE);
+            long vmStartInUs = System.nanoTime() / 1000;
+            Repository rootRepository = RepositoryImpl.createRoot(StoreFactory.getInstance());
+
+            ProgramInvoke invoke = ProgramInvokeFactory.createProgramInvoke(
+                    new Program(bytecodes, codeAddress, invoke0, interTrx), new DataWord(codeAddress),
+                    new DataWord(codeAddress),
+                    DataWord.ZERO(),
+                    DataWord.ZERO(),
+                    DataWord.ZERO(),
+                    0, new byte[0], rootRepository,
+                    false,
+                    false, vmStartInUs, vmStartInUs + 1_000_000_000L, 100_000_000L);
+
             Program program = new Program(bytecodes, codeAddress, invoke, interTrx);
             for (String value : stackValues) {
                 if (value.equals("randomAddress")) {
