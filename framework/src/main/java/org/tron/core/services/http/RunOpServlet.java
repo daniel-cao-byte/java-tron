@@ -2,24 +2,16 @@ package org.tron.core.services.http;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.util.encoders.Hex;
 import org.springframework.stereotype.Component;
-import org.tron.common.runtime.InternalTransaction;
-import org.tron.common.runtime.vm.DataWord;
-import org.tron.core.exception.ContractValidateException;
-import org.tron.core.store.StoreFactory;
-import org.tron.core.vm.JumpTable;
-import org.tron.core.vm.Operation;
-import org.tron.core.vm.OperationRegistry;
-import org.tron.core.vm.program.Program;
-import org.tron.core.vm.program.invoke.ProgramInvokeMockImpl;
-import org.tron.protos.Protocol;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j(topic = "API")
@@ -34,6 +26,7 @@ public class RunOpServlet extends OpServlet {
         String date = df.format(new Date());
         fileWriter.write(date + " run ops configFile: " + opConfig + "\n");
         fileWriter.write(String.format("round:%d\n", round));
+        fileWriter.write(String.format("opName\tavgCost\tminCost\tmaxCost\tavg2\tremoveNum\trangeCount\n"));
         try {
             for (Map.Entry<String, Object> entry : ops.entrySet()) {
                 String opName = entry.getKey();
@@ -47,9 +40,21 @@ public class RunOpServlet extends OpServlet {
                 costList = new ArrayList<>();
                 runOp(bytecodes, codeAddress, stacks);
                 long avgCost = cost / round;
-
                 logger.info("run op : " + opName + " cost: " + avgCost);
-                fileWriter.write(String.format("%s\t%d\n", opName, avgCost));
+                String rangeInfo = countRange(avgCost);
+
+                //remove Big Value
+                long limit = avgCost * 10;
+                int count = 0;
+                long sum = 0;
+                for (long l : costList) {
+                    if (l > limit) {
+                        continue;
+                    }
+                    count += 1;
+                    sum += l;
+                }
+                fileWriter.write(String.format("%s\t%d\t%d\t%d\t%d\t%d\t%s\n", opName, avgCost, minCost, maxCost, sum / count, round - count, rangeInfo));
             }
             fileWriter.write("\n");
         }
@@ -58,6 +63,34 @@ public class RunOpServlet extends OpServlet {
             ops = null;
             costList = null;
         }
+    }
+
+    private String countRange(long avgCost) {
+        List<Long> divided = new ArrayList<>();
+        for (int i = -5; i <= 5; i++) {
+            long point = avgCost + avgCost * i / 10;
+            divided.add(point);
+        }
+
+        int[] appearNums = new int[divided.size() + 1];
+        for (Long l : costList) {
+            int pos = 0;
+            for (long point : divided) {
+                if (l > point) {
+                    pos = pos + 1;
+                }
+                else {
+                    break;
+                }
+            }
+            appearNums[pos] += 1;
+        }
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < appearNums.length - 1; i++) {
+            result.append(String.format("%d,", appearNums[i]));
+        }
+        result.append(String.format("%d", appearNums[appearNums.length - 1]));
+        return result.toString();
     }
 
 }

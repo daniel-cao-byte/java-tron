@@ -19,7 +19,6 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 public abstract class OpServlet extends RateLimiterServlet{
@@ -40,6 +39,10 @@ public abstract class OpServlet extends RateLimiterServlet{
 
     protected long cost;
 
+    protected long maxCost;
+
+    protected long minCost;
+
     protected List<Long> costList;
 
     protected void parseConfig(HttpServletRequest request) throws IOException {
@@ -57,7 +60,6 @@ public abstract class OpServlet extends RateLimiterServlet{
         if (!folder.exists()) {
             folder.mkdir();
         }
-
 
         if (fileName == null) {
             fileName = "benchmark/output_" + opConfig + ".txt";
@@ -98,6 +100,8 @@ public abstract class OpServlet extends RateLimiterServlet{
     }
 
     protected void runOp(byte[] bytecodes, byte[] codeAddress, List<String> stackValues) throws ContractValidateException {
+        maxCost = Long.MIN_VALUE;
+        minCost = Long.MAX_VALUE;
         for (int i = 0; i < round; i++) {
             ProgramInvokeMockImpl invoke = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             Protocol.Transaction trx = Protocol.Transaction.getDefaultInstance();
@@ -131,7 +135,10 @@ public abstract class OpServlet extends RateLimiterServlet{
         if (costList != null) {
             costList.add(curCost);
         }
+        maxCost = Math.max(maxCost, curCost);
+        minCost = Math.min(minCost, curCost);
         cost += curCost;
         program.setPreviouslyExecutedOp((byte) op.getOpcode());
     }
+
 }
