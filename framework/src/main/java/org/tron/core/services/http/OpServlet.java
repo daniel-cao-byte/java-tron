@@ -167,7 +167,7 @@ public abstract class OpServlet extends RateLimiterServlet{
         minCost = Math.min(minCost, curCost);
         if (isRandomAddress) {
             if (curCost > lastCost) {
-                logger.info(String.format("curCost: %d, randomAddress: %s", curCost, randomAddress));
+                logger.info(String.format("curCost: %d, randomAddress: %s", curCost, Hex.toHexString(randomAddress)));
                 lastCost = curCost;
             }
         }
