@@ -1,6 +1,7 @@
 package org.tron.core.services.http;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bouncycastle.util.encoders.Hex;
 import org.eclipse.jetty.util.StringUtil;
@@ -25,6 +26,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+@Slf4j(topic = "api")
 public abstract class OpServlet extends RateLimiterServlet{
 
     protected String opConfig;
@@ -48,6 +50,12 @@ public abstract class OpServlet extends RateLimiterServlet{
     protected long minCost;
 
     protected List<Long> costList;
+
+    boolean isRandomAddress = false;
+
+    byte[] randomAddress;
+
+    private long lastCost;
 
     protected void parseConfig(HttpServletRequest request) throws IOException {
         opConfig = request.getParameter("op_config");
@@ -127,9 +135,12 @@ public abstract class OpServlet extends RateLimiterServlet{
             Program program = new Program(bytecodes, codeAddress, invoke, interTrx);
             for (String value : stackValues) {
                 if (value.equals("randomAddress")) {
-                    program.stackPush(new DataWord(generateAddress()));
+                    isRandomAddress = true;
+                    randomAddress = generateAddress();
+                    program.stackPush(new DataWord(randomAddress));
                 }
                 else {
+                    isRandomAddress = false;
                     program.stackPush(new DataWord(value));
                 }
             }
@@ -154,6 +165,12 @@ public abstract class OpServlet extends RateLimiterServlet{
         }
         maxCost = Math.max(maxCost, curCost);
         minCost = Math.min(minCost, curCost);
+        if (isRandomAddress) {
+            if (curCost > lastCost) {
+                logger.info(String.format("curCost: %d, randomAddress: %s", curCost, randomAddress));
+                lastCost = curCost;
+            }
+        }
         cost += curCost;
         program.setPreviouslyExecutedOp((byte) op.getOpcode());
     }
