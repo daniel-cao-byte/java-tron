@@ -36,6 +36,7 @@ public class PreOpServlet extends OpServlet {
                 byte[] bytecodes = getBytecodes(map);
                 byte[] codeAddress = getCodeAddress(map);
                 List<String> stacks = getStacks(map);
+                lastCost = Long.MAX_VALUE;
                 while (true) {
                     cost = 0;
                     runOp(bytecodes, codeAddress, stacks);
