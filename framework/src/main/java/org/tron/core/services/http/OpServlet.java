@@ -37,7 +37,7 @@ public abstract class OpServlet extends RateLimiterServlet{
 
     protected FileWriter fileWriter;
 
-    protected Map<String, Object> ops;
+    protected List ops;
 
     final Random random = new Random();
 
@@ -80,7 +80,7 @@ public abstract class OpServlet extends RateLimiterServlet{
             fileName = "benchmark/" + fileName + ".txt";
         }
         fileWriter = new FileWriter(fileName, true);
-        ops = (Map)params.get("ops");
+        ops = (List)params.get("ops");
     }
 
     protected byte[] generateAddress() {

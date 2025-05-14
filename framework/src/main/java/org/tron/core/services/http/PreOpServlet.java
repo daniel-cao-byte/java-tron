@@ -28,11 +28,11 @@ public class PreOpServlet extends OpServlet {
         fileWriter.write(date + " pre ops configFile" + opConfig + "\n");
         fileWriter.write(String.format("round:%d\n", round));
         try {
-            for (Map.Entry<String, Object> entry : ops.entrySet()) {
-                String opName = entry.getKey();
+            for (Object op : ops) {
+                Map map = (Map) op;
+                String opName = map.get("opName").toString();
                 logger.info("pre op : " + opName);
-                Object value = entry.getValue();
-                Map<String, Object> map = (Map) value;
+
                 byte[] bytecodes = getBytecodes(map);
                 byte[] codeAddress = getCodeAddress(map);
                 List<String> stacks = getStacks(map);

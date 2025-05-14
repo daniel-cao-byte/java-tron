@@ -28,11 +28,10 @@ public class RunOpServlet extends OpServlet {
         fileWriter.write(String.format("round:%d\n", round));
         fileWriter.write(String.format("opName\tavgCost\tminCost\tmaxCost\tavg2\tremoveNum\trangeCount\n"));
         try {
-            for (Map.Entry<String, Object> entry : ops.entrySet()) {
-                String opName = entry.getKey();
+            for (Object op : ops) {
+                Map map = (Map) op;
+                String opName = map.get("opName").toString();
                 logger.info("run op : " + opName);
-                Object value = entry.getValue();
-                Map<String, Object> map = (Map) value;
                 byte[] bytecodes = getBytecodes(map);
                 byte[] codeAddress = getCodeAddress(map);
                 List<String> stacks = getStacks(map);
