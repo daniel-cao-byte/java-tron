@@ -86,7 +86,10 @@ public abstract class OpServlet extends RateLimiterServlet{
     protected byte[] generateAddress() {
         byte[] result = new byte[32];
         random.nextBytes(result);
-        result[0] = 0x41;
+        for (int i = 0; i < 11; i++) {
+            result[i] = 0x00;
+        }
+        result[11] = 0x41;
         return result;
     }
 
