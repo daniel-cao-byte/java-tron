@@ -1,15 +1,19 @@
 package org.tron.core.services.http;
 
 import com.alibaba.fastjson.JSONObject;
+import io.prometheus.client.Histogram;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bouncycastle.util.encoders.Hex;
 import org.eclipse.jetty.util.StringUtil;
+import org.tron.common.prometheus.MetricKeys;
+import org.tron.common.prometheus.Metrics;
 import org.tron.common.runtime.InternalTransaction;
 import org.tron.common.runtime.vm.DataWord;
 import org.tron.core.exception.ContractValidateException;
 import org.tron.core.store.StoreFactory;
 import org.tron.core.vm.JumpTable;
+import org.tron.core.vm.Op;
 import org.tron.core.vm.Operation;
 import org.tron.core.vm.OperationRegistry;
 import org.tron.core.vm.program.Program;
@@ -160,7 +164,15 @@ public abstract class OpServlet extends RateLimiterServlet{
         program.verifyStackSize(op.getRequire());
         program.verifyStackOverflow(op.getRequire(), op.getRet());
         long start = System.nanoTime();
-        op.execute(program);
+
+        try (Histogram.Timer timer = Metrics.histogramStartTimer(
+                MetricKeys.Histogram.DB_OPERATE_LATENCY, Op.getNameOf(op.getOpcode()), "account", Op.getNameOf(op.getOpcode()))) {
+            op.execute(program);
+        }
+        finally {
+
+        }
+
         long end = System.nanoTime();
         long curCost = end - start;
         if (costList != null) {
