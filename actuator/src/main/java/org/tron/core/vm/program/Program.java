@@ -1,5 +1,6 @@
 package org.tron.core.vm.program;
 
+import static java.lang.StrictMath.log;
 import static java.lang.StrictMath.min;
 import static java.lang.String.format;
 import static org.apache.commons.lang3.ArrayUtils.EMPTY_BYTE_ARRAY;
@@ -1178,17 +1179,26 @@ public class Program {
 
   public byte[] getCodeHashAt(DataWord address) {
     byte[] tronAddr = address.toTronAddress();
+    long startTime = System.nanoTime();
     AccountCapsule account = getContractState().getAccount(tronAddr);
+    logger.info("getAccount cost : {}", System.nanoTime() - startTime);
+    startTime = System.nanoTime();
+
     if (account != null) {
       ContractCapsule contract = getContractState().getContract(tronAddr);
+      logger.info("get Contract time : {}", System.nanoTime() - startTime);
+      startTime = System.nanoTime();
       byte[] codeHash;
       if (contract != null) {
         codeHash = contract.getCodeHash();
         if (ByteUtil.isNullOrZeroArray(codeHash)) {
           byte[] code = getCodeAt(address);
+          logger.info("get code time {}", System.nanoTime() - startTime);
+          startTime = System.nanoTime();
           codeHash = Hash.sha3(code);
           contract.setCodeHash(codeHash);
           getContractState().updateContract(tronAddr, contract);
+          logger.info("calc hash and update contract time {}", System.nanoTime() - startTime);
         }
       } else {
         codeHash = Hash.sha3(new byte[0]);
