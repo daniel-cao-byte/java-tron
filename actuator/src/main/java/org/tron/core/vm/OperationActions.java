@@ -6,12 +6,15 @@ import static org.tron.common.utils.ByteUtil.EMPTY_BYTE_ARRAY;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+
+import lombok.extern.slf4j.Slf4j;
 import org.tron.common.runtime.vm.DataWord;
 import org.tron.common.runtime.vm.LogInfo;
 import org.tron.core.vm.config.VMConfig;
 import org.tron.core.vm.program.Program;
 import org.tron.core.vm.program.Stack;
 
+@Slf4j
 public class OperationActions {
 
   private static final BigInteger _32_ = BigInteger.valueOf(32);
@@ -473,7 +476,9 @@ public class OperationActions {
 
   public static void extCodeHashAction(Program program) {
     DataWord address = program.stackPop();
+    long startTime = System.nanoTime();
     byte[] codeHash = program.getCodeHashAt(address);
+    logger.info("getCodeHashAt cost {}", System.nanoTime() - startTime);
     program.stackPush(new DataWord(codeHash));
     program.step();
   }
