@@ -165,13 +165,8 @@ public abstract class OpServlet extends RateLimiterServlet{
         program.verifyStackOverflow(op.getRequire(), op.getRet());
         long start = System.nanoTime();
 
-        try (Histogram.Timer timer = Metrics.histogramStartTimer(
-                MetricKeys.Histogram.DB_OPERATE_LATENCY, Op.getNameOf(op.getOpcode()), "account", Op.getNameOf(op.getOpcode()))) {
-            op.execute(program);
-        }
-        finally {
+        op.execute(program);
 
-        }
 
         long end = System.nanoTime();
         long curCost = end - start;
