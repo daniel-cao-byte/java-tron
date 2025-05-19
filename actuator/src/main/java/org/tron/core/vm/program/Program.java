@@ -1178,8 +1178,8 @@ public class Program {
   }
 
   public byte[] getCodeHashAt(DataWord address) {
-    long startTime = System.nanoTime();
     byte[] tronAddr = address.toTronAddress();
+    long startTime = System.nanoTime();
     AccountCapsule account = getContractState().getAccount(tronAddr);
     logger.info("getAccount cost : {}", System.nanoTime() - startTime);
     startTime = System.nanoTime();
