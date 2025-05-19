@@ -170,7 +170,6 @@ public abstract class OpServlet extends RateLimiterServlet{
 
         long end = System.nanoTime();
         long curCost = end - start;
-        logger.info("op cost Time : {}", curCost);
         if (costList != null) {
             costList.add(curCost);
         }
