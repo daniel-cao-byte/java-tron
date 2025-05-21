@@ -61,6 +61,7 @@ public class RunOpServlet extends OpServlet {
             fileWriter.close();
             ops = null;
             costList = null;
+            addressList = null;
         }
     }
 

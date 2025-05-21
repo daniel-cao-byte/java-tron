@@ -41,7 +41,7 @@ public class GenerateAddressServlet extends RateLimiterServlet {
             } catch (IOException e) {
                 logger.error("write file error ", e);
             }
-        })
+        });
         fileWriter.close();
     }
 

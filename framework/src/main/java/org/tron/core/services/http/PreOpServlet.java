@@ -54,6 +54,7 @@ public class PreOpServlet extends OpServlet {
             fileWriter.close();
             ops = null;
             lastCost = Long.MAX_VALUE;
+            addressList = null;
         }
     }
 }

@@ -25,10 +25,11 @@ import org.tron.core.vm.repository.RepositoryImpl;
 import org.tron.protos.Protocol;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Stream;
 
 @Slf4j(topic = "api")
 public abstract class OpServlet extends RateLimiterServlet{
@@ -60,6 +61,11 @@ public abstract class OpServlet extends RateLimiterServlet{
     byte[] randomAddress;
 
     private long lastCost;
+
+    protected List<String> addressList;
+
+    private int curIndex = 0;
+
 
     protected void parseConfig(HttpServletRequest request) throws IOException {
         opConfig = request.getParameter("op_config");
@@ -118,7 +124,7 @@ public abstract class OpServlet extends RateLimiterServlet{
         return Collections.emptyList();
     }
 
-    protected void runOp(byte[] bytecodes, byte[] codeAddress, List<String> stackValues) throws ContractValidateException {
+    protected void runOp(byte[] bytecodes, byte[] codeAddress, List<String> stackValues) throws ContractValidateException, IOException {
         maxCost = Long.MIN_VALUE;
         minCost = Long.MAX_VALUE;
         lastCost = Long.MIN_VALUE;
@@ -147,6 +153,16 @@ public abstract class OpServlet extends RateLimiterServlet{
                     randomAddress = generateAddress();
                     program.stackPush(new DataWord(randomAddress));
                 }
+                else if (value.equals("accountAddress")) {
+                    if (addressList == null) {
+                        readFile();
+                    }
+                    program.stackPush(new DataWord(addressList.get(curIndex)));
+                    curIndex++;
+                    if (curIndex == addressList.size()) {
+                        curIndex = 0;
+                    }
+                }
                 else {
                     isRandomAddress = false;
                     program.stackPush(new DataWord(value));
@@ -154,6 +170,16 @@ public abstract class OpServlet extends RateLimiterServlet{
             }
             testSingleOpration(program);
         }
+        addressList = null;
+    }
+
+    private void readFile() throws IOException {
+        String fileName = "accountAddress.txt";
+        addressList = new ArrayList();
+        Files.lines(Paths.get(fileName)).forEach(line -> {
+            addressList.add(line.trim());
+        });
+
     }
 
     protected void testSingleOpration(Program program) {
