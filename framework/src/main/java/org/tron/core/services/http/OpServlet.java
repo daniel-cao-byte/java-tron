@@ -179,6 +179,9 @@ public abstract class OpServlet extends RateLimiterServlet{
         Files.lines(Paths.get(fileName)).forEach(line -> {
             addressList.add(line.trim());
         });
+        if (curIndex >= addressList.size()) {
+            curIndex = 0;
+        }
 
     }
 
