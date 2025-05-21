@@ -7,7 +7,9 @@ import org.bouncycastle.util.encoders.Hex;
 import org.eclipse.jetty.util.StringUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.tron.core.ChainBaseManager;
 import org.tron.core.Wallet;
+import org.tron.core.store.AccountStore;
 import org.tron.protos.Protocol;
 
 import javax.servlet.http.HttpServletRequest;
@@ -21,46 +23,26 @@ import java.util.Random;
 public class GenerateAddressServlet extends RateLimiterServlet {
 
     final Random random = new Random();
+//
+//    @Autowired
+//    private Wallet wallet;
 
     @Autowired
-    private Wallet wallet;
+    private ChainBaseManager chainBaseManager;
 
     @SneakyThrows
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        FileWriter fileWriter = new FileWriter("randomAddress.txt");
-//        String round = request.getParameter("round");
-        long roundNum = 10;
-//        if (!StringUtil.isBlank(round)) {
-//            try {
-//                roundNum = Long.parseLong(round);
-//            }
-//            catch (NumberFormatException e) {
-//
-//            }
-//        }
-
-        int i = 0;
-        while (i < roundNum) {
-            byte[] address = generateAddress();
-//            logger.info("address is {}, i = {}", Hex.toHexString(address), i);
-            Protocol.Account.Builder build = Protocol.Account.newBuilder();
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("address", Hex.toHexString(address));
-            JsonFormat.merge(jsonObject.toJSONString(), build, false);
-            Protocol.Account account = wallet.getAccount(build.build());
-            if (account != null) {
-                continue;
+        FileWriter fileWriter = new FileWriter("accountAddress.txt");
+        AccountStore accountStore = chainBaseManager.getAccountStore();
+        accountStore.iterator().forEachRemaining(account -> {
+            account.getValue();
+            try {
+                fileWriter.write(Hex.toHexString(account.getKey()) + '\n');
+            } catch (IOException e) {
+                logger.error("write file error ", e);
             }
-            i ++;
-            fileWriter.write(Hex.toHexString(address) + '\n');
-        }
+        })
         fileWriter.close();
     }
 
-    protected byte[] generateAddress() {
-        byte[] result = new byte[21];
-        random.nextBytes(result);
-        result[0] = 0x41;
-        return result;
-    }
 }
