@@ -144,6 +144,7 @@ public abstract class OpServlet extends RateLimiterServlet{
                 if (value.equals("randomAddress")) {
                     isRandomAddress = true;
                     randomAddress = generateAddress();
+                    logger.info("randomAddress : {}, {}", Hex.toHexString(randomAddress), randomAddress);
                     program.stackPush(new DataWord(randomAddress));
                 }
                 else {
