@@ -121,6 +121,7 @@ public abstract class OpServlet extends RateLimiterServlet{
     protected void runOp(byte[] bytecodes, byte[] codeAddress, List<String> stackValues) throws ContractValidateException {
         maxCost = Long.MIN_VALUE;
         minCost = Long.MAX_VALUE;
+        lastCost = Long.MIN_VALUE;
         for (int i = 0; i < round; i++) {
             ProgramInvokeMockImpl invoke0 = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             Protocol.Transaction trx = Protocol.Transaction.getDefaultInstance();
@@ -144,7 +145,6 @@ public abstract class OpServlet extends RateLimiterServlet{
                 if (value.equals("randomAddress")) {
                     isRandomAddress = true;
                     randomAddress = generateAddress();
-                    logger.info("randomAddress : {}, {}", Hex.toHexString(randomAddress), randomAddress);
                     program.stackPush(new DataWord(randomAddress));
                 }
                 else {
