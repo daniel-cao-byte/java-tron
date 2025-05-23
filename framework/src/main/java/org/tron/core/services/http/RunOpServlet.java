@@ -33,7 +33,7 @@ public class RunOpServlet extends OpServlet {
                 String opName = map.get("opName").toString();
                 logger.info("run op : " + opName);
                 byte[] bytecodes = getBytecodes(map);
-                byte[] codeAddress = getCodeAddress(map);
+                String codeAddress = getCodeAddress(map);
                 List<String> stacks = getStacks(map);
                 cost = 0;
                 costList = new ArrayList<>();

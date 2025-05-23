@@ -2,6 +2,7 @@ package org.tron.core.services.http;
 
 import com.alibaba.fastjson.JSONObject;
 import io.prometheus.client.Histogram;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bouncycastle.util.encoders.Hex;
@@ -34,6 +35,7 @@ import java.util.stream.Stream;
 @Slf4j(topic = "api")
 public abstract class OpServlet extends RateLimiterServlet{
 
+    private static final String RANDOM_CONTRACT = "randomContract";
     protected String opConfig;
 
     protected String fileName;
@@ -65,6 +67,10 @@ public abstract class OpServlet extends RateLimiterServlet{
     protected List<String> addressList;
 
     private int curIndex = 0;
+
+    protected List<String> contractList;
+
+    private int contractIndex = 0;
 
 
     protected void parseConfig(HttpServletRequest request) throws IOException {
@@ -108,10 +114,24 @@ public abstract class OpServlet extends RateLimiterServlet{
         return Hex.decode(bytecodes);
     }
 
-    protected byte[] getCodeAddress(Map<String, Object> map) {
-        String codeAddress = (String) map.get("codeAddress");
+    protected String getCodeAddress(Map<String, Object> map) {
+        return (String) map.get("codeAddress");
+    }
+
+    protected byte[] codeAddressToByte(String codeAddress) {
         if (codeAddress == null) {
             return new byte[0];
+        }
+
+        if (RANDOM_CONTRACT.equals(codeAddress)) {
+            if (contractList == null) {
+                loadContractAddressFile();
+            }
+
+            if (contractIndex >= contractList.size()) {
+                contractIndex = 0;
+            }
+            return Hex.decode(contractList.get(contractIndex++));
         }
         return Hex.decode(codeAddress);
     }
@@ -124,11 +144,12 @@ public abstract class OpServlet extends RateLimiterServlet{
         return Collections.emptyList();
     }
 
-    protected void runOp(byte[] bytecodes, byte[] codeAddress, List<String> stackValues) throws ContractValidateException, IOException {
+    protected void runOp(byte[] bytecodes, String codeAddressStr, List<String> stackValues) throws ContractValidateException, IOException {
         maxCost = Long.MIN_VALUE;
         minCost = Long.MAX_VALUE;
         lastCost = Long.MIN_VALUE;
         for (int i = 0; i < round; i++) {
+            byte[] codeAddress = codeAddressToByte(codeAddressStr);
             ProgramInvokeMockImpl invoke0 = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             Protocol.Transaction trx = Protocol.Transaction.getDefaultInstance();
             InternalTransaction interTrx =
@@ -171,6 +192,7 @@ public abstract class OpServlet extends RateLimiterServlet{
             testSingleOpration(program);
         }
         addressList = null;
+        contractList = null;
     }
 
     private void readFile() throws IOException {
@@ -182,6 +204,15 @@ public abstract class OpServlet extends RateLimiterServlet{
         if (curIndex >= addressList.size()) {
             curIndex = 0;
         }
+    }
+
+    @SneakyThrows
+    private void loadContractAddressFile() {
+        String fileName = "contractAddress.txt";
+        contractList = new ArrayList<>();
+        Files.lines(Paths.get(fileName)).forEach(line -> {
+            contractList.add(line.trim());
+        });
 
     }
 
