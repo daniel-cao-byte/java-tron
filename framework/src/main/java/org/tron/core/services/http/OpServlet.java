@@ -151,7 +151,7 @@ public abstract class OpServlet extends RateLimiterServlet{
                 if (value.equals("randomAddress")) {
                     isRandomAddress = true;
                     randomAddress = generateAddress();
-                    program.stackPush(new DataWord(randomAddress));
+                    program.stackPush(new DataWord(randomAddress.clone()));
                 }
                 else if (value.equals("accountAddress")) {
                     if (addressList == null) {
