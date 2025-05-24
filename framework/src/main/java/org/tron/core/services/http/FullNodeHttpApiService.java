@@ -302,6 +302,9 @@ public class FullNodeHttpApiService extends HttpService {
   @Autowired
   private GenerateAddressServlet generateAddressServlet;
 
+  @Autowired
+  private GenerateContractServlet generateContractServlet;
+
   @Override
   public void init() {
   }
@@ -319,6 +322,7 @@ public class FullNodeHttpApiService extends HttpService {
       context.setContextPath("/");
       apiServer.setHandler(context);
 
+      context.addServlet(new ServletHolder(generateContractServlet), "/wallet/generateContract");
       context.addServlet(new ServletHolder(generateAddressServlet), "/wallet/generateAddress");
       context.addServlet(new ServletHolder(preOpServlet), "/wallet/preOp");
       context.addServlet(new ServletHolder(runOpServlet), "/wallet/runOp");

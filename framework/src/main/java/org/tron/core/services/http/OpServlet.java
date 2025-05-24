@@ -70,9 +70,6 @@ public abstract class OpServlet extends RateLimiterServlet{
 
     protected List<String> contractList;
 
-    private int contractIndex = 0;
-
-
     protected void parseConfig(HttpServletRequest request) throws IOException {
         opConfig = request.getParameter("op_config");
         if (StringUtil.isBlank(opConfig)) {
@@ -128,10 +125,7 @@ public abstract class OpServlet extends RateLimiterServlet{
                 loadContractAddressFile();
             }
 
-            if (contractIndex >= contractList.size()) {
-                contractIndex = 0;
-            }
-            return Hex.decode(contractList.get(contractIndex++));
+            return Hex.decode(contractList.get(random.nextInt(contractList.size())));
         }
         return Hex.decode(codeAddress);
     }
