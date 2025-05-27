@@ -177,6 +177,11 @@ public abstract class OpServlet extends RateLimiterServlet{
                     if (curIndex == addressList.size()) {
                         curIndex = 0;
                     }
+                } else if (value.equals("randomAccount")) {
+                    if (addressList == null) {
+                        readFile();
+                    }
+                    program.stackPush(new DataWord(addressList.get(random.nextInt(addressList.size()))));
                 }
                 else {
                     isRandomAddress = false;
