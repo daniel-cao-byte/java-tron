@@ -57,6 +57,11 @@ public class DbExpand implements Callable<Integer> {
       description = " expend rate")
   private int expendRate;
 
+  @CommandLine.Option(names = {"--expand-count"},
+      defaultValue = "0",
+      description = "expand count")
+  private int expandCount;
+
   @CommandLine.Option(names = {"-h", "--help"}, help = true, description = "display a help message")
   boolean help;
 
@@ -153,6 +158,26 @@ public class DbExpand implements Callable<Integer> {
       coldData.close();
       FileUtils.deleteDir(coldPath.toFile());
       source.close();
+    } else if (targetType == 3) {
+      // generate Cold Data
+      logger.info("Generate Cold Data start in path {}", targetPath);
+      spec.commandLine().getOut().println(String.format("%s Generate Cold Data start in path %s",
+          dateFormat.format(new Date()), targetPath));
+      generateColdDataByCount(source, target, expandCount);
+      logger.info("Generate Cold Data done in path {}", targetPath);
+      spec.commandLine().getOut().println(String.format("%s Generate Cold Data done in path %s",
+          dateFormat.format(new Date()), targetPath));
+      // merge Warm Data to Cold Data
+      logger.info("Merge Warm Data {} to Cold Data {} start", sourcePath, targetPath);
+      spec.commandLine().getOut().println(String.format(
+          "%s Merge Warm Data %s to Cold Data %s start",
+          dateFormat.format(new Date()), sourcePath, targetPath));
+      merge(source, target);
+      logger.info("Merge Warm Data {} to Cold Data {} done", sourcePath, targetPath);
+      spec.commandLine().getOut().println(String.format(
+          "%s Merge Warm Data %s to Cold Data %s done",
+          dateFormat.format(new Date()), sourcePath, targetPath));
+      source.close();
     }
 
     logger.info("Expand db {} done", targetDb);
@@ -228,6 +253,36 @@ public class DbExpand implements Callable<Integer> {
           throw new RuntimeException(e);
         }
       });
+
+    } finally {
+      JniDBFactory.popMemoryPool();
+    }
+  }
+
+  private void generateColdDataByCount(DB source, DB coldData, int count) {
+    JniDBFactory.pushMemoryPool(2048 * 2048);
+    try {
+      int idx = 0;
+      List<byte[]> keys = new ArrayList<>(BATCH);
+      List<byte[]> values = new ArrayList<>(BATCH);
+      try (DBIterator levelIterator = source.iterator(
+          new org.iq80.leveldb.ReadOptions().fillCache(false))) {
+        levelIterator.seekToFirst();
+        while (levelIterator.hasNext() && idx++ < count) {
+          Map.Entry<byte[], byte[]> entry = levelIterator.next();
+          byte[] key = generateAddress();
+          keys.add(key);
+          values.add(entry.getValue());
+          if (keys.size() >= BATCH) {
+            insertToLevelDb(coldData, keys, values);
+          }
+        }
+        if (!keys.isEmpty()) {
+          insertToLevelDb(coldData, keys, values);
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
 
     } finally {
       JniDBFactory.popMemoryPool();
