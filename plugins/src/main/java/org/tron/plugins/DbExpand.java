@@ -165,18 +165,18 @@ public class DbExpand implements Callable<Integer> {
           dateFormat.format(new Date()), targetPath));
       generateColdDataByCount(source, target, expandCount);
       logger.info("Generate Cold Data done in path {}", targetPath);
-      spec.commandLine().getOut().println(String.format("%s Generate Cold Data done in path %s",
-          dateFormat.format(new Date()), targetPath));
-      // merge Warm Data to Cold Data
-      logger.info("Merge Warm Data {} to Cold Data {} start", sourcePath, targetPath);
-      spec.commandLine().getOut().println(String.format(
-          "%s Merge Warm Data %s to Cold Data %s start",
-          dateFormat.format(new Date()), sourcePath, targetPath));
-      merge(source, target);
-      logger.info("Merge Warm Data {} to Cold Data {} done", sourcePath, targetPath);
-      spec.commandLine().getOut().println(String.format(
-          "%s Merge Warm Data %s to Cold Data %s done",
-          dateFormat.format(new Date()), sourcePath, targetPath));
+//      spec.commandLine().getOut().println(String.format("%s Generate Cold Data done in path %s",
+//          dateFormat.format(new Date()), targetPath));
+//      // merge Warm Data to Cold Data
+//      logger.info("Merge Warm Data {} to Cold Data {} start", sourcePath, targetPath);
+//      spec.commandLine().getOut().println(String.format(
+//          "%s Merge Warm Data %s to Cold Data %s start",
+//          dateFormat.format(new Date()), sourcePath, targetPath));
+//      merge(source, target);
+//      logger.info("Merge Warm Data {} to Cold Data {} done", sourcePath, targetPath);
+//      spec.commandLine().getOut().println(String.format(
+//          "%s Merge Warm Data %s to Cold Data %s done",
+//          dateFormat.format(new Date()), sourcePath, targetPath));
       source.close();
     }
 
