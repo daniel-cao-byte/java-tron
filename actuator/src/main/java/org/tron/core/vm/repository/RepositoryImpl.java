@@ -289,9 +289,9 @@ public class RepositoryImpl implements Repository {
   @Override
   public AccountCapsule getAccount(byte[] address) {
     Key key = new Key(address);
-//    if (accountCache.containsKey(key)) {
-//      return new AccountCapsule(accountCache.get(key).getValue());
-//    }
+    if (accountCache.containsKey(key)) {
+      return new AccountCapsule(accountCache.get(key).getValue());
+    }
 
     AccountCapsule accountCapsule;
     if (parent != null) {
@@ -610,8 +610,19 @@ public class RepositoryImpl implements Repository {
 
   @Override
   public DataWord getStorageValue(byte[] address, DataWord key) {
+    long start = System.nanoTime();
     Storage storage = getStorageInternal(address);
-    return storage == null ? null : storage.getValue(key);
+
+    long afterStore = System.nanoTime();
+    DataWord result;
+    if (storage == null) {
+      result = null;
+    } else {
+      result = storage.getValue(key);
+    }
+    long afterValue = System.nanoTime();
+    logger.info("[getStorageValue] GetStore: {}, GetValue: {}", afterStore - start, afterValue - afterStore);
+    return result;
   }
 
   private Storage getStorageInternal(byte[] address) {

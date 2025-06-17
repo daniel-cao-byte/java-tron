@@ -6,12 +6,14 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.tron.common.crypto.Hash;
 import org.tron.common.runtime.vm.DataWord;
 import org.tron.common.utils.ByteUtil;
 import org.tron.core.capsule.StorageRowCapsule;
 import org.tron.core.store.StorageRowStore;
 
+@Slf4j(topic = "Repository")
 public class Storage {
 
   private static final int PREFIX_BYTES = 16;
@@ -44,12 +46,14 @@ public class Storage {
   }
 
   private byte[] compose(byte[] key, byte[] addrHash) {
+    long start = System.nanoTime();
     if (contractVersion == 1) {
       key = Hash.sha3(key);
     }
     byte[] result = new byte[key.length];
     arraycopy(addrHash, 0, result, 0, PREFIX_BYTES);
     arraycopy(key, PREFIX_BYTES, result, PREFIX_BYTES, PREFIX_BYTES);
+    logger.info("[Storage] Compose: {}", System.nanoTime() - start);
     return result;
   }
 
