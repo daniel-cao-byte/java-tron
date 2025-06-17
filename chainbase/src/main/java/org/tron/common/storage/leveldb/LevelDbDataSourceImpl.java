@@ -81,18 +81,6 @@ public class LevelDbDataSourceImpl extends DbStat implements DbSourceInter<byte[
     @Override
     public void log(String message) {
       innerLogger.info("{} {}", dataBaseName, message);
-      if (message.startsWith("Recovering")) {
-        Metrics.counterInc(MetricKeys.Counter.DB_EVENT, 1, LEVELDB, dataBaseName, "recover");
-      }
-      if (message.startsWith("Compacting")) {
-        Metrics.counterInc(MetricKeys.Counter.DB_EVENT, 1, LEVELDB, dataBaseName, "compact");
-      }
-      if (message.startsWith("Delete")) {
-        Metrics.counterInc(MetricKeys.Counter.DB_EVENT, 1, LEVELDB, dataBaseName, "delete");
-      }
-      if (message.startsWith("Generated")) {
-        Metrics.counterInc(MetricKeys.Counter.DB_EVENT, 1, LEVELDB, dataBaseName, "create");
-      }
     }
   };
 
@@ -212,13 +200,10 @@ public class LevelDbDataSourceImpl extends DbStat implements DbSourceInter<byte[
   @Override
   public byte[] getData(byte[] key) {
     resetDbLock.readLock().lock();
-    long startTime = System.nanoTime();
-    try (Histogram.Timer timer = Metrics.histogramStartTimer(
-        MetricKeys.Histogram.DB_OPERATE_LATENCY, LEVELDB, dataBaseName, "get")) {
+    try {
       return database.get(key);
     } finally {
       resetDbLock.readLock().unlock();
-      innerLogger.info("get {} {}", dataBaseName, (System.nanoTime() - startTime) / 1000.0);
     }
   }
 
