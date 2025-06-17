@@ -289,9 +289,9 @@ public class RepositoryImpl implements Repository {
   @Override
   public AccountCapsule getAccount(byte[] address) {
     Key key = new Key(address);
-//    if (accountCache.containsKey(key)) {
-//      return new AccountCapsule(accountCache.get(key).getValue());
-//    }
+    if (accountCache.containsKey(key)) {
+      return new AccountCapsule(accountCache.get(key).getValue());
+    }
 
     AccountCapsule accountCapsule;
     if (parent != null) {
