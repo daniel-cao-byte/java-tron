@@ -147,7 +147,7 @@ public abstract class OpServlet extends RateLimiterServlet{
             long vmStartInUs = System.nanoTime() / 1000;
             Repository rootRepository = RepositoryImpl.createRoot(StoreFactory.getInstance());
 
-            ProgramInvokeMockImpl mockInvoke0 = ProgramInvokeMockImpl.newProgramInvoke();
+            ProgramInvokeMockImpl mockInvoke0 = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             ProgramInvoke invoke = ProgramInvokeFactory.createProgramInvoke(
                     new Program(bytecodes, codeAddress, mockInvoke0, interTrx), new DataWord(codeAddress),
                     new DataWord(codeAddress),
@@ -159,7 +159,7 @@ public abstract class OpServlet extends RateLimiterServlet{
                     false, vmStartInUs, vmStartInUs + 1_000_000_000L, 100_000_000L);
             Program program = new Program(bytecodes, codeAddress, invoke, interTrx);
 
-            ProgramInvokeMockImpl mockInvoke1 = ProgramInvokeMockImpl.newProgramInvoke();
+            ProgramInvokeMockImpl mockInvoke1 = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             ProgramInvoke preInvoke = ProgramInvokeFactory.createProgramInvoke(
                 new Program(bytecodes, codeAddress, mockInvoke1, interTrx), new DataWord(codeAddress),
                 new DataWord(codeAddress),
