@@ -158,8 +158,19 @@ public abstract class OpServlet extends RateLimiterServlet{
                     false,
                     false, vmStartInUs, vmStartInUs + 1_000_000_000L, 100_000_000L);
 
-            Program pre = new Program(bytecodes, codeAddress, invoke, interTrx);
             Program program = new Program(bytecodes, codeAddress, invoke, interTrx);
+
+            ProgramInvoke preInvoke = ProgramInvokeFactory.createProgramInvoke(
+                new Program(bytecodes, codeAddress, invoke0, interTrx), new DataWord(codeAddress),
+                new DataWord(codeAddress),
+                DataWord.ZERO(),
+                DataWord.ZERO(),
+                DataWord.ZERO(),
+                0, new byte[0], rootRepository,
+                false,
+                false, vmStartInUs, vmStartInUs + 1_000_000_000L, 100_000_000L);
+
+            Program pre = new Program(bytecodes, codeAddress, preInvoke, interTrx);
             for (String value : stackValues) {
                 if (value.equals("randomAddress")) {
                     isRandomAddress = true;
