@@ -141,15 +141,15 @@ public abstract class OpServlet extends RateLimiterServlet{
         lastCost = Long.MIN_VALUE;
         for (int i = 0; i < round; i++) {
             byte[] codeAddress = codeAddressToByte(codeAddressStr);
-            ProgramInvokeMockImpl invoke0 = new ProgramInvokeMockImpl(StoreFactory.getInstance(), bytecodes, codeAddress);
             Protocol.Transaction trx = Protocol.Transaction.getDefaultInstance();
             InternalTransaction interTrx =
                     new InternalTransaction(trx, InternalTransaction.TrxType.TRX_UNKNOWN_TYPE);
             long vmStartInUs = System.nanoTime() / 1000;
             Repository rootRepository = RepositoryImpl.createRoot(StoreFactory.getInstance());
 
+            ProgramInvokeMockImpl mockInvoke0 = ProgramInvokeMockImpl.newProgramInvoke();
             ProgramInvoke invoke = ProgramInvokeFactory.createProgramInvoke(
-                    new Program(bytecodes, codeAddress, invoke0, interTrx), new DataWord(codeAddress),
+                    new Program(bytecodes, codeAddress, mockInvoke0, interTrx), new DataWord(codeAddress),
                     new DataWord(codeAddress),
                     DataWord.ZERO(),
                     DataWord.ZERO(),
@@ -157,11 +157,11 @@ public abstract class OpServlet extends RateLimiterServlet{
                     0, new byte[0], rootRepository,
                     false,
                     false, vmStartInUs, vmStartInUs + 1_000_000_000L, 100_000_000L);
-
             Program program = new Program(bytecodes, codeAddress, invoke, interTrx);
 
+            ProgramInvokeMockImpl mockInvoke1 = ProgramInvokeMockImpl.newProgramInvoke();
             ProgramInvoke preInvoke = ProgramInvokeFactory.createProgramInvoke(
-                new Program(bytecodes, codeAddress, invoke0, interTrx), new DataWord(codeAddress),
+                new Program(bytecodes, codeAddress, mockInvoke1, interTrx), new DataWord(codeAddress),
                 new DataWord(codeAddress),
                 DataWord.ZERO(),
                 DataWord.ZERO(),
@@ -169,8 +169,8 @@ public abstract class OpServlet extends RateLimiterServlet{
                 0, new byte[0], rootRepository,
                 false,
                 false, vmStartInUs, vmStartInUs + 1_000_000_000L, 100_000_000L);
-
             Program pre = new Program(bytecodes, codeAddress, preInvoke, interTrx);
+
             for (String value : stackValues) {
                 if (value.equals("randomAddress")) {
                     isRandomAddress = true;
