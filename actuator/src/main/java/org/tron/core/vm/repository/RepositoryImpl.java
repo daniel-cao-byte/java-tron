@@ -459,9 +459,9 @@ public class RepositoryImpl implements Repository {
   @Override
   public ContractCapsule getContract(byte[] address) {
     Key key = Key.create(address);
-//    if (contractCache.containsKey(key)) {
-//      return new ContractCapsule(contractCache.get(key).getValue());
-//    }
+    if (contractCache.containsKey(key)) {
+      return new ContractCapsule(contractCache.get(key).getValue());
+    }
 
     ContractCapsule contractCapsule;
     if (parent != null) {
