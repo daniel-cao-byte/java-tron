@@ -289,9 +289,9 @@ public class RepositoryImpl implements Repository {
   @Override
   public AccountCapsule getAccount(byte[] address) {
     Key key = new Key(address);
-    if (accountCache.containsKey(key)) {
-      return new AccountCapsule(accountCache.get(key).getValue());
-    }
+//    if (accountCache.containsKey(key)) {
+//      return new AccountCapsule(accountCache.get(key).getValue());
+//    }
 
     AccountCapsule accountCapsule;
     if (parent != null) {
@@ -459,9 +459,9 @@ public class RepositoryImpl implements Repository {
   @Override
   public ContractCapsule getContract(byte[] address) {
     Key key = Key.create(address);
-    if (contractCache.containsKey(key)) {
-      return new ContractCapsule(contractCache.get(key).getValue());
-    }
+//    if (contractCache.containsKey(key)) {
+//      return new ContractCapsule(contractCache.get(key).getValue());
+//    }
 
     ContractCapsule contractCapsule;
     if (parent != null) {
@@ -580,9 +580,9 @@ public class RepositoryImpl implements Repository {
   @Override
   public byte[] getCode(byte[] address) {
     Key key = Key.create(address);
-    if (codeCache.containsKey(key)) {
-      return codeCache.get(key).getValue();
-    }
+//    if (codeCache.containsKey(key)) {
+//      return codeCache.get(key).getValue();
+//    }
 
     byte[] code;
     if (parent != null) {
