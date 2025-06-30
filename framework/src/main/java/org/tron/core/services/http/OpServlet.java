@@ -1,20 +1,16 @@
 package org.tron.core.services.http;
 
 import com.alibaba.fastjson.JSONObject;
-import io.prometheus.client.Histogram;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.bouncycastle.util.encoders.Hex;
 import org.eclipse.jetty.util.StringUtil;
-import org.tron.common.prometheus.MetricKeys;
-import org.tron.common.prometheus.Metrics;
 import org.tron.common.runtime.InternalTransaction;
 import org.tron.common.runtime.vm.DataWord;
 import org.tron.core.exception.ContractValidateException;
 import org.tron.core.store.StoreFactory;
 import org.tron.core.vm.JumpTable;
-import org.tron.core.vm.Op;
 import org.tron.core.vm.Operation;
 import org.tron.core.vm.OperationRegistry;
 import org.tron.core.vm.program.Program;
@@ -30,7 +26,6 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Stream;
 
 @Slf4j(topic = "api")
 public abstract class OpServlet extends RateLimiterServlet{
@@ -55,6 +50,8 @@ public abstract class OpServlet extends RateLimiterServlet{
     protected long maxCost;
 
     protected long minCost;
+
+    protected long precost;
 
     protected List<Long> costList;
 
@@ -161,18 +158,21 @@ public abstract class OpServlet extends RateLimiterServlet{
                     false,
                     false, vmStartInUs, vmStartInUs + 1_000_000_000L, 100_000_000L);
 
+            Program pre = new Program(bytecodes, codeAddress, invoke, interTrx);
             Program program = new Program(bytecodes, codeAddress, invoke, interTrx);
             for (String value : stackValues) {
                 if (value.equals("randomAddress")) {
                     isRandomAddress = true;
                     randomAddress = generateAddress();
                     program.stackPush(new DataWord(randomAddress.clone()));
+                    pre.stackPush(new DataWord(randomAddress.clone()));
                 }
                 else if (value.equals("accountAddress")) {
                     if (addressList == null) {
                         readFile();
                     }
                     program.stackPush(new DataWord(addressList.get(curIndex)));
+                    pre.stackPush(new DataWord(addressList.get(curIndex)));
                     curIndex++;
                     if (curIndex == addressList.size()) {
                         curIndex = 0;
@@ -181,14 +181,18 @@ public abstract class OpServlet extends RateLimiterServlet{
                     if (addressList == null) {
                         readFile();
                     }
-                    program.stackPush(new DataWord(addressList.get(random.nextInt(addressList.size()))));
+                    String addr = addressList.get(random.nextInt(addressList.size()));
+                    program.stackPush(new DataWord(addr));
+                    pre.stackPush(new DataWord(addr));
                 }
                 else {
                     isRandomAddress = false;
                     program.stackPush(new DataWord(value));
+                    pre.stackPush(new DataWord(value));
                 }
             }
-            testSingleOpration(program);
+            prerunSingleOperation(pre);
+            testSingleOperation(program);
         }
         addressList = null;
         contractList = null;
@@ -214,8 +218,27 @@ public abstract class OpServlet extends RateLimiterServlet{
         });
 
     }
+    protected void prerunSingleOperation(Program program) {
+        Operation op = jumpTable.get(program.getCurrentOpIntValue());
+        if (!op.isEnabled()) {
+            throw Program.Exception.invalidOpCode(program.getCurrentOp());
+        }
 
-    protected void testSingleOpration(Program program) {
+        program.setLastOp((byte) op.getOpcode());
+        program.verifyStackSize(op.getRequire());
+        program.verifyStackOverflow(op.getRequire(), op.getRet());
+        long start = System.nanoTime();
+
+        op.execute(program);
+
+        long end = System.nanoTime();
+
+        precost += end - start;
+
+        program.setPreviouslyExecutedOp((byte) op.getOpcode());
+    }
+
+    protected void testSingleOperation(Program program) {
         Operation op = jumpTable.get(program.getCurrentOpIntValue());
         if (!op.isEnabled()) {
             throw Program.Exception.invalidOpCode(program.getCurrentOp());
@@ -227,20 +250,16 @@ public abstract class OpServlet extends RateLimiterServlet{
 
         op.execute(program);
 
-
         long end = System.nanoTime();
         long curCost = end - start;
+
         if (costList != null) {
             costList.add(curCost);
         }
+
         maxCost = Math.max(maxCost, curCost);
         minCost = Math.min(minCost, curCost);
-        if (isRandomAddress) {
-            if (curCost > lastCost) {
-                logger.info(String.format("curCost: %d, randomAddress: %s", curCost, Hex.toHexString(randomAddress)));
-                lastCost = curCost;
-            }
-        }
+
         cost += curCost;
         program.setPreviouslyExecutedOp((byte) op.getOpcode());
     }

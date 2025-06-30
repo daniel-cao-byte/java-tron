@@ -26,7 +26,7 @@ public class RunOpServlet extends OpServlet {
         String date = df.format(new Date());
         fileWriter.write(date + " run ops configFile: " + opConfig + "\n");
         fileWriter.write(String.format("round:%d\n", round));
-        fileWriter.write(String.format("opName\tavgCost\tminCost\tmaxCost\tavg2\tremoveNum\trangeCount\n"));
+        fileWriter.write(String.format("opName\tavgCost\tpreAvg\tminCost\tmaxCost\tavg2\tremoveNum\trangeCount\n"));
         try {
             for (Object op : ops) {
                 Map map = (Map) op;
@@ -36,10 +36,12 @@ public class RunOpServlet extends OpServlet {
                 String codeAddress = getCodeAddress(map);
                 List<String> stacks = getStacks(map);
                 cost = 0;
+                precost = 0;
                 costList = new ArrayList<>();
                 runOp(bytecodes, codeAddress, stacks);
+                long preAvg = precost / round;
                 long avgCost = cost / round;
-                logger.info("run op : " + opName + " cost: " + avgCost);
+                logger.info("run op : " + opName + " cost: " + avgCost + ", precost: " + preAvg);
                 String rangeInfo = countRange(avgCost);
 
                 //remove Big Value
@@ -53,7 +55,7 @@ public class RunOpServlet extends OpServlet {
                     count += 1;
                     sum += l;
                 }
-                fileWriter.write(String.format("%s\t%d\t%d\t%d\t%d\t%d\t%s\n", opName, avgCost, minCost, maxCost, sum / count, round - count, rangeInfo));
+                fileWriter.write(String.format("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\n", opName, avgCost, preAvg, minCost, maxCost, sum / count, round - count, rangeInfo));
             }
             fileWriter.write("\n");
         }
