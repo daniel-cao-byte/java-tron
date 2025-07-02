@@ -213,13 +213,10 @@ public class LevelDbDataSourceImpl extends DbStat implements DbSourceInter<byte[
   @Override
   public byte[] getData(byte[] key) {
     resetDbLock.readLock().lock();
-    long startTime = System.nanoTime();
-    try (Histogram.Timer timer = Metrics.histogramStartTimer(
-        MetricKeys.Histogram.DB_OPERATE_LATENCY, LEVELDB, dataBaseName, "get")) {
+    try {
       return database.get(key);
     } finally {
       resetDbLock.readLock().unlock();
-      innerLogger.info("get {} {}", dataBaseName, (System.nanoTime() - startTime) / 1000.0);
     }
   }
 
