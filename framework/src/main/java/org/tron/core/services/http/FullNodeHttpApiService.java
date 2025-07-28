@@ -290,6 +290,8 @@ public class FullNodeHttpApiService extends HttpService {
   private UnDelegateResourceServlet unDelegateResourceServlet;
   @Autowired
   private CancelAllUnfreezeV2Servlet cancelAllUnfreezeV2Servlet;
+  @Autowired
+  private EnergyPlatformServlet energyPlatformServlet;
 
   public FullNodeHttpApiService() {
     port = Args.getInstance().getFullNodeHttpPort();
@@ -306,6 +308,7 @@ public class FullNodeHttpApiService extends HttpService {
     context.addServlet(new ServletHolder(voteWitnessAccountServlet),
         "/wallet/votewitnessaccount");
     context.addServlet(new ServletHolder(createAssetIssueServlet), "/wallet/createassetissue");
+    context.addServlet(new ServletHolder(energyPlatformServlet), "/wallet/energyplatform");
     context.addServlet(new ServletHolder(updateWitnessServlet), "/wallet/updatewitness");
     context.addServlet(new ServletHolder(createAccountServlet), "/wallet/createaccount");
     context.addServlet(new ServletHolder(createWitnessServlet), "/wallet/createwitness");
