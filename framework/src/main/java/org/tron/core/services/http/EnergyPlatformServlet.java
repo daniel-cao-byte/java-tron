@@ -19,12 +19,20 @@ import org.tron.protos.Protocol;
 import org.tron.protos.contract.BalanceContract;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 @Component
 public class EnergyPlatformServlet extends RateLimiterServlet {
+  
+  public static final int QUEUE_CAPACITY = 1000000;
+  
+  public static final String OUTPUT_FILE = "energy.txt";
+  BlockingQueue<Action> queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
 	
 	@Data
 	@Builder
@@ -58,29 +66,46 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) {
 		long startBlock = Long.parseLong(request.getParameter("start_block"));
 		long endBlock = Long.parseLong(request.getParameter("end_block"));
-		try (FileWriter fileWriter = new FileWriter("energy_" + startBlock + "_" + endBlock + ".txt", true)) {
-			List<Action> records = new ArrayList<>();
-			
-      for (long id = startBlock; id < endBlock; id += 100) {
-        long step = endBlock - id > 100 ? 100 : endBlock - id;
-        List<BlockCapsule> blocks = blockStore.getLimitNumber(id, step);
-        for (BlockCapsule blockCapsule : blocks) {
-          records.addAll(visit(blockCapsule));
+  
+    Thread producer = new Thread(() -> {
+        try {
+            for (long id = startBlock; id < endBlock; id += 1000) {
+              long step = endBlock - id > 1000 ? 1000 : endBlock - id;
+              List<BlockCapsule> blocks = blockStore.getLimitNumber(id, step);
+              for (BlockCapsule blockCapsule : blocks) {
+                visit(blockCapsule);
+              }
+            }
+            queue.put(Action.builder().build());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
-        StringBuilder buffer = new StringBuilder();
-        records.forEach(it -> buffer.append(it.toRaw()));
-        fileWriter.write(buffer.toString());
-        records.clear();
-      }
-			response.getWriter().println("ok");
-		} catch (Exception e) {
-			Util.processError(e, response);
-		}
+    });
+    
+    Thread consumer = new Thread(() -> {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
+            while (true) {
+                Action data = queue.take(); // 队列空时自动阻塞
+                if (data.resource == null) break; // 遇到结束标志退出
+                writer.write(data.toRaw());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    });
+    
+    producer.start();
+    consumer.start();
+
+    try {
+      response.getWriter().println("ok");
+    } catch (Exception e) {
+      Util.processError(e, response);
+    }
 	}
 	
 	@SneakyThrows
-	private List<Action> visit(BlockCapsule blockCapsule) {
-		List<Action> records = new ArrayList<>();
+	private void visit(BlockCapsule blockCapsule) {
 		long time = blockCapsule.getInstance().getBlockHeader().getRawData().getTimestamp();
     SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
     formatter.setTimeZone(TimeZone.getTimeZone("GMT+8"));
@@ -123,7 +148,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             action = Action.builder().txnId(txnId).date(date).type("freeze")
                 .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
 						
-						records.add(action);
+						queue.put(action);
 						break;
 					case FreezeBalanceV2Contract:
 						BalanceContract.FreezeBalanceV2Contract freezeBalanceV2Contract =
@@ -140,7 +165,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             action = Action.builder().txnId(txnId).date(date).type("freezev2")
                 .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
             
-            records.add(action);
+            queue.add(action);
             break;
           case DelegateResourceContract:
             BalanceContract.DelegateResourceContract delegateResourceContract = contractParameter.unpack(
@@ -159,7 +184,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 						action = Action.builder().txnId(txnId).date(date)
 								.type("delegate").owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
 						
-						records.add(action);
+						queue.add(action);
             break;
           case UnDelegateResourceContract:
             BalanceContract.UnDelegateResourceContract unDelegateResourceContract = contractParameter
@@ -179,7 +204,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
              Action.builder().txnId(txnId).date(date).type("undelegate")
              .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
             	
-						records.add(action);
+						queue.add(action);
 						break;
           case CancelAllUnfreezeV2Contract:
 					case UnfreezeBalanceContract:
@@ -190,8 +215,8 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 				}
       }
     }
-		return records;
-	
 	}
+ 
+ 
 
 }
