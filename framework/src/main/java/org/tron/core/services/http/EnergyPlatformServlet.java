@@ -84,7 +84,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
           }
 
           queue.put(Action.builder().build());
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             Thread.currentThread().interrupt();
         }
     });
