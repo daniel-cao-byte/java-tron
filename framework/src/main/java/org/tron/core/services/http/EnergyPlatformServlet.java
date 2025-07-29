@@ -14,9 +14,7 @@ import org.tron.common.parameter.CommonParameter;
 import org.tron.common.utils.StringUtil;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
-import org.tron.core.db.BlockIndexStore;
 import org.tron.core.db.BlockStore;
-import org.tron.core.db.TransactionStore;
 import org.tron.protos.Protocol;
 import org.tron.protos.contract.BalanceContract;
 import javax.servlet.http.HttpServletRequest;
@@ -41,18 +39,12 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 		public Long amount;
 		
 		public String toRaw() {
-			return txnId + "," + date + "," + signer + "," + owner + "," + receiver + "," + type + "," + resource + "," + amount;
+			return txnId + "," + date + "," + signer + "," + owner + "," + receiver + "," + type + "," + resource + "," + amount + "\n";
 		}
 	}
 	
 	@Autowired
 	private BlockStore blockStore;
-	
-	@Autowired
-	private BlockIndexStore blockIndexStore;
-	
-	@Autowired
-	private TransactionStore transactionStore;
 
 	private Set<Protocol.Transaction.Contract.ContractType> types = ImmutableSet.of(
 			Protocol.Transaction.Contract.ContractType.FreezeBalanceContract,
@@ -69,22 +61,17 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 		try (FileWriter fileWriter = new FileWriter("energy_" + startBlock + "_" + endBlock + ".txt", true)) {
 			List<Action> records = new ArrayList<>();
 			
-			for (long block = startBlock; block < endBlock; block++) {
-				records.addAll(visit(block));
-				
-				if (block % 100 == 0) {
-					StringBuffer buffer = new StringBuffer();
-					records.forEach(it -> buffer.append(it.toRaw()).append("\n"));
-					fileWriter.write(buffer.toString());
-					records.clear();
-				}
-			}
-
-      StringBuffer buffer = new StringBuffer();
-      records.forEach(it -> buffer.append(it.toRaw()).append("\n"));
-      fileWriter.write(buffer.toString());
-      records.clear();
-			
+      for (long id = startBlock; id < endBlock; id += 100) {
+        long step = endBlock - id > 100 ? 100 : endBlock - id;
+        List<BlockCapsule> blocks = blockStore.getLimitNumber(id, step);
+        for (BlockCapsule blockCapsule : blocks) {
+          records.addAll(visit(blockCapsule));
+        }
+        StringBuilder buffer = new StringBuilder();
+        records.forEach(it -> buffer.append(it.toRaw()));
+        fileWriter.write(buffer.toString());
+        records.clear();
+      }
 			response.getWriter().println("ok");
 		} catch (Exception e) {
 			Util.processError(e, response);
@@ -92,16 +79,14 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 	}
 	
 	@SneakyThrows
-	private List<Action> visit(long blockNumber) {
+	private List<Action> visit(BlockCapsule blockCapsule) {
 		List<Action> records = new ArrayList<>();
-
-		BlockCapsule.BlockId id = blockIndexStore.get(blockNumber);
-    Protocol.Block block = blockStore.get(id.getBytes()).getInstance();
-		
-		long time = block.getBlockHeader().getRawData().getTimestamp();
-		String date = new SimpleDateFormat("yyyy-MM-dd").format(new Date(time));
+		long time = blockCapsule.getInstance().getBlockHeader().getRawData().getTimestamp();
+    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+    formatter.setTimeZone(TimeZone.getTimeZone("GMT+8"));
+		String date = formatter.format(new Date(time));
     
-    for (Protocol.Transaction txn : block.getTransactionsList()) {
+    for (Protocol.Transaction txn : blockCapsule.getInstance().getTransactionsList()) {
 			TransactionCapsule capsule = new TransactionCapsule(txn);
 			Protocol.Transaction.Contract contract = txn.getRawData().getContract(0);
       ByteString signatureHex = txn.getSignature(0);
