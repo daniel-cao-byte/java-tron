@@ -11,10 +11,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.tron.common.crypto.SignUtils;
 import org.tron.common.parameter.CommonParameter;
+import org.tron.common.utils.Sha256Hash;
 import org.tron.common.utils.StringUtil;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.db.BlockStore;
+import org.tron.core.db.common.iterator.DBIterator;
 import org.tron.protos.Protocol;
 import org.tron.protos.contract.BalanceContract;
 import javax.servlet.http.HttpServletRequest;
@@ -63,20 +65,25 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 			Protocol.Transaction.Contract.ContractType.UnDelegateResourceContract);
 	
   @Override
+  @SneakyThrows
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) {
 		long startBlock = Long.parseLong(request.getParameter("start_block"));
 		long endBlock = Long.parseLong(request.getParameter("end_block"));
   
     Thread producer = new Thread(() -> {
         try {
-            for (long id = startBlock; id < endBlock; id += 1000) {
-              long step = endBlock - id > 1000 ? 1000 : endBlock - id;
-              List<BlockCapsule> blocks = blockStore.getLimitNumber(id, step);
-              for (BlockCapsule blockCapsule : blocks) {
-                visit(blockCapsule);
-              }
+          DBIterator it = (DBIterator) blockStore.getDb().iterator();
+          it.seek(new BlockCapsule.BlockId(Sha256Hash.ZERO_HASH, startBlock).getBytes());
+          
+          while (it.hasNext()) {
+            BlockCapsule blockCapsule = new BlockCapsule(it.next().getValue());
+            if (blockCapsule.getNum() >= endBlock) {
+              break;
             }
-            queue.put(Action.builder().build());
+            visit(blockCapsule);
+          }
+
+          queue.put(Action.builder().build());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
