@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.util.BlockingArrayQueue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.tron.common.crypto.SignUtils;
@@ -35,11 +34,11 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
   
   public static final String OUTPUT_FILE = "energy.txt";
   
-  public static final int PROCESSOR_COUNT = 16;
+  public static final int PROCESSOR_COUNT = 32;
 
   Queue<Action> queue = new ConcurrentLinkedQueue<>();
   
-  Queue<BlockCapsule> blockQueue = new BlockingArrayQueue<>(20000);
+  BlockingQueue<BlockCapsule> blockQueue = new ArrayBlockingQueue<>(20000);
 
   ExecutorService processorPool = Executors.newFixedThreadPool(PROCESSOR_COUNT);
 	
@@ -87,7 +86,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             if (blockCapsule.getNum() >= endBlock) {
               break;
             }
-            blockQueue.offer(blockCapsule);
+            blockQueue.put(blockCapsule);
             if (blockCapsule.getNum() % 1000 == 0) {
               logger.info("Produce block: {}", blockCapsule.getNum());
             }
@@ -95,7 +94,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
           it.close();
           
           for (int i = 0; i < PROCESSOR_COUNT; i++) {
-            blockQueue.offer(new BlockCapsule(0L, ByteString.EMPTY, 0L, Collections.emptyList()));
+            blockQueue.put(new BlockCapsule(0L, ByteString.EMPTY, 0L, Collections.emptyList()));
           }
 
           queue.offer(Action.builder().build());
