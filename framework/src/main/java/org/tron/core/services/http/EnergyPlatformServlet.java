@@ -9,6 +9,8 @@ import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.tron.common.crypto.SignUtils;
+import org.tron.common.parameter.CommonParameter;
 import org.tron.common.utils.StringUtil;
 import org.tron.core.capsule.BlockCapsule;
 import org.tron.core.capsule.TransactionCapsule;
@@ -77,6 +79,11 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 					records.clear();
 				}
 			}
+
+      StringBuffer buffer = new StringBuffer();
+      records.forEach(it -> buffer.append(it.toRaw()));
+      fileWriter.write(buffer.toString());
+      records.clear();
 			
 			response.getWriter().println("ok");
 		} catch (Exception e) {
@@ -97,13 +104,18 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
     for (Protocol.Transaction txn : block.getTransactionsList()) {
 			TransactionCapsule capsule = new TransactionCapsule(txn);
 			Protocol.Transaction.Contract contract = txn.getRawData().getContract(0);
+      ByteString signatureHex = txn.getSignature(0);
 			Any contractParameter = contract.getParameter();
-			ByteString signerHex = txn.getRawData().getAuths(0).getAccount().getAddress();
-			String signer = StringUtil.encode58Check(signerHex.toByteArray());
-			
+
+      byte[] hash = capsule.getTransactionId().getBytes();
+      String base64 = TransactionCapsule.getBase64FromByteString(signatureHex);
+      byte[] address = SignUtils.signatureToAddress(hash, base64, CommonParameter.getInstance().isECKeyCryptoEngine());
+			String signer = StringUtil.encode58Check(address);
+
 			String owner;
-			String receiver;
+      String receiver;
       String resource;
+      String txnId = capsule.getTransactionId().toString();
 			long amount;
 			
 			Action action;
@@ -123,7 +135,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 						amount = freezeBalanceContract.getFrozenBalance();
             resource = freezeBalanceContract.getResource().name();
 
-            action = Action.builder().txnId(capsule.getTransactionId().toString()).date(date).type("freeze")
+            action = Action.builder().txnId(txnId).date(date).type("freeze")
                 .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
 						
 						records.add(action);
@@ -140,7 +152,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             amount = freezeBalanceV2Contract.getFrozenBalance();
             resource = "";
 
-            action = Action.builder().txnId(capsule.getTransactionId().toString()).date(date).type("freezev2")
+            action = Action.builder().txnId(txnId).date(date).type("freezev2")
                 .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
             
             records.add(action);
@@ -159,7 +171,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             amount = delegateResourceContract.getBalance();
             resource = delegateResourceContract.getResource().name();
 						
-						action = Action.builder().txnId(capsule.getTransactionId().toString()).date(date)
+						action = Action.builder().txnId(txnId).date(date)
 								.type("delegate").owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
 						
 						records.add(action);
@@ -179,7 +191,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             resource = unDelegateResourceContract.getResource().name();
 						
             action =
-             Action.builder().txnId(capsule.getTransactionId().toString()).date(date).type("undelegate")
+             Action.builder().txnId(txnId).date(date).type("undelegate")
              .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
             	
 						records.add(action);
