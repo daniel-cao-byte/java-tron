@@ -39,7 +39,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 
   Queue<Action> queue = new ConcurrentLinkedQueue<>();
   
-  Queue<BlockCapsule> blockQueue = new BlockingArrayQueue<>(40000);
+  Queue<BlockCapsule> blockQueue = new BlockingArrayQueue<>(20000);
 
   ExecutorService processorPool = Executors.newFixedThreadPool(PROCESSOR_COUNT);
 	
