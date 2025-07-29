@@ -72,7 +72,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 			for (long block = startBlock; block < endBlock; block++) {
 				records.addAll(visit(block));
 				
-				if (block % 1000 == 0) {
+				if (block % 100 == 0) {
 					StringBuffer buffer = new StringBuffer();
 					records.forEach(it -> buffer.append(it.toRaw()).append("\n"));
 					fileWriter.write(buffer.toString());
@@ -81,7 +81,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 			}
 
       StringBuffer buffer = new StringBuffer();
-      records.forEach(it -> buffer.append(it.toRaw()));
+      records.forEach(it -> buffer.append(it.toRaw()).append("\n"));
       fileWriter.write(buffer.toString());
       records.clear();
 			
