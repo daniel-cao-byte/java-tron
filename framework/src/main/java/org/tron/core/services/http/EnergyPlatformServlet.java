@@ -6,6 +6,7 @@ import com.google.protobuf.ByteString;
 import lombok.Builder;
 import lombok.Data;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -25,16 +26,21 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.*;
 
 @Component
+@Slf4j(topic = "API")
 public class EnergyPlatformServlet extends RateLimiterServlet {
   
-  public static final int QUEUE_CAPACITY = 1000000;
-  
   public static final String OUTPUT_FILE = "energy.txt";
-  BlockingQueue<Action> queue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
+  
+  public static final int PROCESSOR_COUNT = 8;
+
+  Queue<Action> queue = new ConcurrentLinkedQueue<>();
+  
+  Queue<BlockCapsule> blockQueue = new ConcurrentLinkedQueue<>();
+
+  ExecutorService processorPool = Executors.newFixedThreadPool(PROCESSOR_COUNT);
 	
 	@Data
 	@Builder
@@ -80,20 +86,55 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             if (blockCapsule.getNum() >= endBlock) {
               break;
             }
-            visit(blockCapsule);
+            blockQueue.offer(blockCapsule);
+            if (blockCapsule.getNum() % 1000 == 0) {
+              logger.info("Produce block: {}", blockCapsule.getNum());
+            }
+          }
+          it.close();
+          
+          for (int i = 0; i < PROCESSOR_COUNT; i++) {
+            blockQueue.offer(new BlockCapsule(0L, ByteString.EMPTY, 0L, Collections.emptyList()));
           }
 
-          queue.put(Action.builder().build());
+          queue.offer(Action.builder().build());
         } catch (Exception e) {
             Thread.currentThread().interrupt();
         }
     });
     
+    Runnable processorTask = () -> {
+      try {
+        while (true) {
+          BlockCapsule blockCapsule = blockQueue.poll();
+          if (blockCapsule == null) {
+            logger.info("Processor empty run");
+            Thread.sleep(100);
+            continue;
+          }
+          if (blockCapsule.getNum() == 0L) {
+            break;
+          }
+          if (blockCapsule.getNum() % 1000 == 0) {
+            logger.info("Process block: {}", blockCapsule.getNum());
+          }
+          visit(blockCapsule);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    };
+    
     Thread consumer = new Thread(() -> {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE))) {
             while (true) {
-                Action data = queue.take(); // 队列空时自动阻塞
-                if (data.resource == null) break; // 遇到结束标志退出
+                Action data = queue.poll();
+                if (data == null) {
+                  logger.info("Consumer empty run");
+                  Thread.sleep(100);
+                  continue;
+                }
+                if (data.resource == null) break;
                 writer.write(data.toRaw());
             }
         } catch (Exception e) {
@@ -102,6 +143,9 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
     });
     
     producer.start();
+    for (int i = 0; i < PROCESSOR_COUNT; i++) {
+      processorPool.submit(processorTask);
+    }
     consumer.start();
 
     try {
@@ -123,27 +167,34 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 			Protocol.Transaction.Contract contract = txn.getRawData().getContract(0);
       ByteString signatureHex = txn.getSignature(0);
 			Any contractParameter = contract.getParameter();
-
-      byte[] hash = capsule.getTransactionId().getBytes();
-      String base64 = TransactionCapsule.getBase64FromByteString(signatureHex);
-      byte[] address = SignUtils.signatureToAddress(hash, base64, CommonParameter.getInstance().isECKeyCryptoEngine());
-			String signer = StringUtil.encode58Check(address);
+      
+      byte[] hash;
+      String base64;
+      byte[] address;
+      String signer;
 
 			String owner;
       String receiver;
       String resource;
-      String txnId = capsule.getTransactionId().toString();
+      String txnId;
 			long amount;
 			
 			Action action;
 			
       if (types.contains(contract.getType())) {
+        txnId = capsule.getTransactionId().toString();
+
 				switch (contract.getType()) {
 					case FreezeBalanceContract:
 						BalanceContract.FreezeBalanceContract freezeBalanceContract = contractParameter.unpack(
 								BalanceContract.FreezeBalanceContract.class);
 
             owner =  StringUtil.encode58Check(freezeBalanceContract.getOwnerAddress().toByteArray());
+            hash = capsule.getTransactionId().getBytes();
+            base64 = TransactionCapsule.getBase64FromByteString(signatureHex);
+            address = SignUtils.signatureToAddress(hash, base64, CommonParameter.getInstance().isECKeyCryptoEngine());
+            signer = StringUtil.encode58Check(address);
+            
 						if (StringUtils.equals(owner, signer)) {
 							continue;
 						}
@@ -155,12 +206,18 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             action = Action.builder().txnId(txnId).date(date).type("freeze")
                 .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
 						
-						queue.put(action);
+						queue.offer(action);
 						break;
 					case FreezeBalanceV2Contract:
 						BalanceContract.FreezeBalanceV2Contract freezeBalanceV2Contract =
 						    contractParameter.unpack(BalanceContract.FreezeBalanceV2Contract.class);
 						owner =  StringUtil.encode58Check(freezeBalanceV2Contract.getOwnerAddress().toByteArray());
+            
+            hash = capsule.getTransactionId().getBytes();
+            base64 = TransactionCapsule.getBase64FromByteString(signatureHex);
+            address = SignUtils.signatureToAddress(hash, base64, CommonParameter.getInstance().isECKeyCryptoEngine());
+            signer = StringUtil.encode58Check(address);
+            
             if (StringUtils.equals(owner, signer)) {
               continue;
             }
@@ -172,14 +229,18 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             action = Action.builder().txnId(txnId).date(date).type("freezev2")
                 .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
             
-            queue.add(action);
+            queue.offer(action);
             break;
           case DelegateResourceContract:
             BalanceContract.DelegateResourceContract delegateResourceContract = contractParameter.unpack(
 								BalanceContract.DelegateResourceContract.class);
 						
 						owner = StringUtil.encode58Check(delegateResourceContract.getOwnerAddress().toByteArray());
-						
+            hash = capsule.getTransactionId().getBytes();
+            base64 = TransactionCapsule.getBase64FromByteString(signatureHex);
+            address = SignUtils.signatureToAddress(hash, base64, CommonParameter.getInstance().isECKeyCryptoEngine());
+            signer = StringUtil.encode58Check(address);
+
 						if (StringUtils.equals(owner, signer)) {
 							continue;
 						}
@@ -191,7 +252,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 						action = Action.builder().txnId(txnId).date(date)
 								.type("delegate").owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
 						
-						queue.add(action);
+						queue.offer(action);
             break;
           case UnDelegateResourceContract:
             BalanceContract.UnDelegateResourceContract unDelegateResourceContract = contractParameter
@@ -199,6 +260,11 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 						
 						owner = StringUtil
                 .encode58Check(unDelegateResourceContract.getOwnerAddress().toByteArray());
+            hash = capsule.getTransactionId().getBytes();
+            base64 = TransactionCapsule.getBase64FromByteString(signatureHex);
+            address = SignUtils.signatureToAddress(hash, base64, CommonParameter.getInstance().isECKeyCryptoEngine());
+            signer = StringUtil.encode58Check(address);
+
 						if (StringUtils.equals(owner, signer)) {
 							continue;
 						}
@@ -211,7 +277,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
              Action.builder().txnId(txnId).date(date).type("undelegate")
              .owner(owner).signer(signer).receiver(receiver).resource(resource).amount(amount).build();
             	
-						queue.add(action);
+						queue.offer(action);
 						break;
           case CancelAllUnfreezeV2Contract:
 					case UnfreezeBalanceContract:
