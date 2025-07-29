@@ -74,7 +74,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 				
 				if (block % 1000 == 0) {
 					StringBuffer buffer = new StringBuffer();
-					records.forEach(it -> buffer.append(it.toRaw()));
+					records.forEach(it -> buffer.append(it.toRaw()).append("\n"));
 					fileWriter.write(buffer.toString());
 					records.clear();
 				}
