@@ -62,13 +62,14 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
 	@Autowired
 	private BlockStore blockStore;
 
-	private Set<Protocol.Transaction.Contract.ContractType> types = ImmutableSet.of(
-			Protocol.Transaction.Contract.ContractType.FreezeBalanceContract,
-			Protocol.Transaction.Contract.ContractType.UnfreezeBalanceContract,
-			Protocol.Transaction.Contract.ContractType.FreezeBalanceV2Contract,
-			Protocol.Transaction.Contract.ContractType.UnfreezeBalanceV2Contract,
-			Protocol.Transaction.Contract.ContractType.DelegateResourceContract,
-			Protocol.Transaction.Contract.ContractType.UnDelegateResourceContract);
+	private final Set<Protocol.Transaction.Contract.ContractType> types = ImmutableSet.of(
+//			Protocol.Transaction.Contract.ContractType.FreezeBalanceContract,
+//			Protocol.Transaction.Contract.ContractType.UnfreezeBalanceContract,
+//			Protocol.Transaction.Contract.ContractType.FreezeBalanceV2Contract,
+//			Protocol.Transaction.Contract.ContractType.UnfreezeBalanceV2Contract,
+			Protocol.Transaction.Contract.ContractType.DelegateResourceContract
+//			Protocol.Transaction.Contract.ContractType.UnDelegateResourceContract
+			);
 	
   @Override
   @SneakyThrows
@@ -97,7 +98,6 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             blockQueue.put(new BlockCapsule(0L, ByteString.EMPTY, 0L, Collections.emptyList()));
           }
 
-          queue.offer(Action.builder().build());
         } catch (Exception e) {
             Thread.currentThread().interrupt();
         }
@@ -113,6 +113,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
             continue;
           }
           if (blockCapsule.getNum() == 0L) {
+            queue.offer(Action.builder().build());
             break;
           }
           if (blockCapsule.getNum() % 1000 == 0) {
@@ -127,6 +128,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
     
     Thread consumer = new Thread(() -> {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_FILE, true))) {
+          int cnt = 0;
             while (true) {
                 Action data = queue.poll();
                 if (data == null) {
@@ -134,7 +136,12 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
                   Thread.sleep(100);
                   continue;
                 }
-                if (data.resource == null) break;
+                if (data.resource == null) {
+                  cnt ++;
+                  if (cnt >= PROCESSOR_COUNT - 1) {
+                    break;
+                  }
+                }
                 writer.write(data.toRaw());
             }
         } catch (Exception e) {
