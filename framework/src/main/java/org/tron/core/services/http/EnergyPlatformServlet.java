@@ -109,7 +109,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
           BlockCapsule blockCapsule = blockQueue.poll();
           if (blockCapsule == null) {
             logger.info("Processor empty run");
-            Thread.sleep(100);
+            Thread.sleep(1000);
             continue;
           }
           if (blockCapsule.getNum() == 0L) {
@@ -133,7 +133,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
                 Action data = queue.poll();
                 if (data == null) {
                   logger.info("Consumer empty run");
-                  Thread.sleep(100);
+                  Thread.sleep(1000);
                   continue;
                 }
                 if (data.resource == null) {
