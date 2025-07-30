@@ -34,7 +34,7 @@ public class EnergyPlatformServlet extends RateLimiterServlet {
   
   public static final String OUTPUT_FILE = "energy.txt";
   
-  public static final int PROCESSOR_COUNT = 32;
+  public static final int PROCESSOR_COUNT = 16;
 
   Queue<Action> queue = new ConcurrentLinkedQueue<>();
   
